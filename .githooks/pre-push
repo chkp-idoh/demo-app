@@ -1,0 +1,16 @@
+#!/bin/bash
+protected_branch='master'
+current_branch=$(git symbolic-ref HEAD | sed -e 's,.*/\(.*\),\1,')
+
+if [ $protected_branch = $current_branch ]
+	then
+		read -p "You're about to push to master. What's the meaning of life? > " -n 2 -r < /dev/tty
+		echo
+		#if echo $REPLY | grep -E '^[Yy]$' > /dev/null		
+    	if echo $REPLY | grep -E '44' > /dev/null
+    	then
+        	exit 0 # carry on
+    	fi
+		echo "no no! go read a book"
+    	exit 1 # exit and go read a book
+fi

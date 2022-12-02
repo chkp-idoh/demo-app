@@ -1,0 +1,59 @@
+version: 2.1
+
+references:
+  
+  workspace_root: &workspace_root
+    /tmp/workspace
+    
+  attach_workspace: &attach_workspace
+    attach_workspace:
+      at: *workspace_root
+
+jobs:
+  
+  Code-Scan:
+    docker: 
+      - image: checkpoint/shiftleft:latest
+    steps:
+      - checkout # check out source code to working directory
+      - run: shiftleft code-scan -s ./
+
+  IaC-Assessment:
+    docker:
+      - image: checkpoint/shiftleft:latest
+    steps:
+      - checkout
+      - run: shiftleft -D iac-assessment -p ./terraform-template -r -64 -s medium
+
+  Image-Scan:
+    docker: 
+      - image: checkpoint/shiftleft:latest
+    steps:
+      - setup_remote_docker
+      - *attach_workspace
+      - run: shiftleft image-scan -i /tmp/workspace/demo-app-image.tar
+  
+  Image-Build:
+    docker:
+      - image: docker:latest
+    steps:
+      - setup_remote_docker
+      - *attach_workspace
+      - checkout
+      - run: docker build -t checkpoint/demo-app:$CIRCLE_BRANCH .
+      - run: docker save checkpoint/demo-app:$CIRCLE_BRANCH -o /tmp/workspace/demo-app-image.tar
+      - persist_to_workspace:
+          root: *workspace_root
+          paths:
+            - demo-app-image.tar
+
+workflows:
+  version: 2
+  ShiftLeft_Demo_Pipeline:
+    jobs:
+      - Image-Build          
+      - Code-Scan
+      - IaC-Assessment          
+      - Image-Scan:
+          requires:
+            - Image-Build
